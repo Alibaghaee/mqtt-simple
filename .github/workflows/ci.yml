@@ -16,6 +16,9 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v4
 
+            - name: Prepare environment
+              run: cp .env.example .env
+              
             - name: Start infrastructure
               run: docker compose up -d --build mqtt redis soketi
 
