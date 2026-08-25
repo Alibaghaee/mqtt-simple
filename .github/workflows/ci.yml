@@ -16,31 +16,27 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v4
 
-            - name: Setup PHP
-              uses: shivammathur/setup-php@v2
-              with:
-                  php-version: '8.4'
-                  extensions: pcntl, sockets
-                  coverage: none
-                  tools: composer:v2
-
-            - name: Validate Composer
-              run: composer validate
-
-            - name: Install dependencies
-              run: composer install --no-interaction --prefer-dist --no-progress
-
-            - name: Check formatting
-              run: composer format:check
-
-            - name: Static analysis
-              run: composer analyse
-
             - name: Start infrastructure
               run: docker compose up -d --build mqtt redis soketi
 
-            - name: Run Unit and Feature tests
-              run: composer test
+            - name: Install dependencies
+              run: docker compose run --rm app composer install --no-interaction --prefer-dist --no-progress
 
-            - name: Run MQTT Integration tests
+            - name: Validate Composer
+              run: docker compose run --rm app composer validate --strict
+
+            - name: Check formatting
+              run: docker compose run --rm app composer format:check
+
+            - name: Static analysis
+              run: docker compose run --rm app composer analyse
+
+            - name: Unit and Feature tests
+              run: docker compose run --rm app composer test
+
+            - name: MQTT Integration tests
               run: docker compose run --rm -e MQTT_INTEGRATION=1 app composer test:integration
+
+            - name: Show Docker logs on failure
+              if: failure()
+              run: docker compose logs --no-color
