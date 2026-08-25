@@ -1,0 +1,95 @@
+services:
+  subscriber:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: production
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MQTT_HOST: mqtt
+      MQTT_PORT: 1883
+      MQTT_USERNAME: "${MQTT_USERNAME:-client}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD:-Cl!EnT&Pass}"
+    command: ["php", "bin/subscriber.php"]
+    depends_on:
+      mqtt:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      soketi:
+        condition: service_started
+
+  publisher:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: production
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MQTT_HOST: mqtt
+      MQTT_PORT: 1883
+      MQTT_USERNAME: "${MQTT_USERNAME:-client}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD:-Cl!EnT&Pass}"
+    command: ["php", "bin/publisher.php"]
+    depends_on:
+      mqtt:
+        condition: service_healthy
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    environment:
+      MQTT_USERNAME: "${MQTT_USERNAME:-client}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD:-Cl!EnT&Pass}"
+    command:
+      - /bin/sh
+      - -c
+      - >-
+        set -eu;
+        mkdir -p /mosquitto/data;
+        mosquitto_passwd -b -c /mosquitto/data/passwd "$${MQTT_USERNAME}" "$${MQTT_PASSWORD}";
+        exec mosquitto -c /mosquitto/config/mosquitto.conf
+    restart: unless-stopped
+    volumes:
+      - ./docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt-data:/mosquitto/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mosquitto_pub -h 127.0.0.1 -p 1883
+          -u "$${MQTT_USERNAME}" -P "$${MQTT_PASSWORD}"
+          -t health/check -m ok -q 0
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+
+  redis:
+    image: redis:7.4-alpine
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+
+  soketi:
+    image: quay.io/soketi/soketi:1.4-16-debian
+    restart: unless-stopped
+    environment:
+      SOKETI_DEBUG: "0"
+      SOKETI_DEFAULT_APP_ID: "${PUSHER_APP_ID:-mqtt-test}"
+      SOKETI_DEFAULT_APP_KEY: "${PUSHER_APP_KEY:-mqtt-test-key}"
+      SOKETI_DEFAULT_APP_SECRET: "${PUSHER_APP_SECRET:-mqtt-test-secret}"
+    ports:
+      - "6001:6001"
+      - "9601:9601"
+
+volumes:
+  mqtt-data:
+  redis-data:

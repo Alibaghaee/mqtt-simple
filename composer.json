@@ -1,0 +1,53 @@
+{
+  "name": "ali/mqtt-realtime-test",
+  "description": "Production-minded PHP MQTT publisher/subscriber with Soketi broadcasting",
+  "type": "project",
+  "require": {
+    "php": "^8.4",
+    "php-mqtt/client": "^2.3",
+    "pusher/pusher-php-server": "^7.2",
+    "predis/predis": "^3.0",
+    "vlucas/phpdotenv": "^5.6",
+    "monolog/monolog": "^3.9",
+    "ramsey/uuid": "^4.7"
+  },
+  "require-dev": {
+    "pestphp/pest": "^5.0",
+    "phpstan/phpstan": "^2.1",
+    "phpstan/extension-installer": "^1.4",
+    "friendsofphp/php-cs-fixer": "^3.86"
+  },
+  "autoload": {
+    "psr-4": {
+      "MqttRealtime\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "pest --colors=always --exclude-group=integration",
+    "test:ci": "pest --ci",
+    "analyse": "phpstan analyse --memory-limit=1G",
+    "format:check": "php-cs-fixer fix --dry-run --diff --allow-risky=yes",
+    "format": "php-cs-fixer fix --allow-risky=yes",
+    "quality": [
+      "@format:check",
+      "@analyse",
+      "@test:ci"
+    ],
+    "publisher": "php bin/publisher.php",
+    "subscriber": "php bin/subscriber.php",
+    "test:integration": "pest --colors=always --group=integration"
+  },
+  "config": {
+    "sort-packages": true,
+    "allow-plugins": {
+      "pestphp/pest-plugin": true,
+      "phpstan/extension-installer": true
+    },
+    "process-timeout": 0
+  }
+}

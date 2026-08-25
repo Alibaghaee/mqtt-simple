@@ -1,0 +1,106 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: development
+    working_dir: /app
+    env_file: .env
+    environment:
+      MQTT_HOST: mqtt
+      MQTT_PORT: 1883
+      MQTT_USERNAME: "${MQTT_USERNAME:-client}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD:-Cl!EnT&Pass}"
+    volumes:
+      - .:/app
+    depends_on:
+      mqtt:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      soketi:
+        condition: service_started
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    environment:
+      MQTT_USERNAME: "${MQTT_USERNAME:-client}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD:-Cl!EnT&Pass}"
+    command:
+      - /bin/sh
+      - -c
+      - >-
+        set -eu;
+        mkdir -p /mosquitto/data;
+        if [ -f /mosquitto/data/passwd ]; then
+          mosquitto_passwd -b /mosquitto/data/passwd "$${MQTT_USERNAME}" "$${MQTT_PASSWORD}";
+        else
+          mosquitto_passwd -b -c /mosquitto/data/passwd "$${MQTT_USERNAME}" "$${MQTT_PASSWORD}";
+        fi;
+        exec mosquitto -c /mosquitto/config/mosquitto.conf
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt-data:/mosquitto/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mosquitto_pub -h 127.0.0.1 -p 1883
+          -u "$${MQTT_USERNAME}" -P "$${MQTT_PASSWORD}"
+          -t health/check -m ok -q 0
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    working_dir: /app/frontend
+    environment:
+      VITE_PUSHER_KEY: "${PUSHER_APP_KEY:-mqtt-test-key}"
+      VITE_PUSHER_HOST: "localhost"
+      VITE_PUSHER_PORT: "6001"
+      VITE_PUSHER_CHANNEL: "${PUSHER_CHANNEL:-mqtt.telemetry}"
+      VITE_PUSHER_EVENT: "${PUSHER_EVENT:-telemetry.updated}"
+    volumes:
+      - ./frontend:/app/frontend
+      - frontend-node-modules:/app/frontend/node_modules
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      soketi:
+        condition: service_started
+
+  redis:
+    image: redis:7.4-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+
+  soketi:
+    image: quay.io/soketi/soketi:1.4-16-debian
+    environment:
+      SOKETI_DEBUG: "0"
+      SOKETI_DEFAULT_APP_ID: "${PUSHER_APP_ID:-mqtt-test}"
+      SOKETI_DEFAULT_APP_KEY: "${PUSHER_APP_KEY:-mqtt-test-key}"
+      SOKETI_DEFAULT_APP_SECRET: "${PUSHER_APP_SECRET:-mqtt-test-secret}"
+    ports:
+      - "6001:6001"
+      - "9601:9601"
+
+volumes:
+  mqtt-data:
+  redis-data:
+  frontend-node-modules:
