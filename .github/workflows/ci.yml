@@ -1,39 +1,46 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+    push:
+        branches: [master]
+    pull_request:
 
 permissions:
-  contents: read
+    contents: read
 
 jobs:
-  quality:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    quality:
+        runs-on: ubuntu-latest
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: pcntl, sockets
-          coverage: none
-          tools: composer:v2
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-      - name: Validate Composer
-        run: composer validate --strict
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.4'
+                  extensions: pcntl, sockets
+                  coverage: none
+                  tools: composer:v2
 
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
+            - name: Validate Composer
+              run: composer validate --strict
 
-      - name: Check formatting
-        run: composer format:check
+            - name: Install dependencies
+              run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Static analysis
-        run: composer analyse
+            - name: Check formatting
+              run: composer format:check
 
-      - name: Tests
-        run: composer test:ci
+            - name: Static analysis
+              run: composer analyse
+
+            - name: Start infrastructure
+              run: docker compose up -d --build mqtt redis soketi
+
+            - name: Run Unit and Feature tests
+              run: composer test:ci
+
+            - name: Run MQTT Integration tests
+              run: docker compose run --rm -e MQTT_INTEGRATION=1 app composer test:integration
