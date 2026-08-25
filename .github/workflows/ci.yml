@@ -25,7 +25,7 @@ jobs:
                   tools: composer:v2
 
             - name: Validate Composer
-              run: composer validate  
+              run: composer validate
 
             - name: Install dependencies
               run: composer install --no-interaction --prefer-dist --no-progress
@@ -40,7 +40,7 @@ jobs:
               run: docker compose up -d --build mqtt redis soketi
 
             - name: Run Unit and Feature tests
-              run: composer test:ci
+              run: composer test
 
             - name: Run MQTT Integration tests
               run: docker compose run --rm -e MQTT_INTEGRATION=1 app composer test:integration
