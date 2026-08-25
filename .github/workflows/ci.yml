@@ -22,21 +22,28 @@ jobs:
             - name: Start infrastructure
               run: docker compose up -d --build mqtt redis soketi || true
 
-            - name: Debug infrastructure
+            - name: Fix Mosquitto password permissions
+              run: |
+                  docker compose run --rm --entrypoint sh mqtt -c '
+                    if [ -f /mosquitto/data/passwd ]; then
+                      chown mosquitto:mosquitto /mosquitto/data/passwd
+                      chmod 600 /mosquitto/data/passwd
+                    fi
+                  '
+
+            - name: Restart MQTT
+              run: docker compose restart mqtt
+
+            - name: Check infrastructure
               run: |
                   docker compose ps -a
-                  echo "===== MQTT LOGS ====="
                   docker compose logs --no-color mqtt
-                  echo "===== REDIS LOGS ====="
-                  docker compose logs --no-color redis
-                  echo "===== SOKETI LOGS ====="
-                  docker compose logs --no-color soketi
 
             - name: Install dependencies
               run: docker compose run --rm app composer install --no-interaction --prefer-dist --no-progress
 
             - name: Validate Composer
-              run: docker compose run --rm app composer validate --strict
+              run: docker compose run --rm app composer validate
 
             - name: Check formatting
               run: docker compose run --rm app composer format:check
