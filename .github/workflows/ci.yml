@@ -18,9 +18,19 @@ jobs:
 
             - name: Prepare environment
               run: cp .env.example .env
-              
+
             - name: Start infrastructure
-              run: docker compose up -d --build mqtt redis soketi
+              run: docker compose up -d --build mqtt redis soketi || true
+
+            - name: Debug infrastructure
+              run: |
+                  docker compose ps -a
+                  echo "===== MQTT LOGS ====="
+                  docker compose logs --no-color mqtt
+                  echo "===== REDIS LOGS ====="
+                  docker compose logs --no-color redis
+                  echo "===== SOKETI LOGS ====="
+                  docker compose logs --no-color soketi
 
             - name: Install dependencies
               run: docker compose run --rm app composer install --no-interaction --prefer-dist --no-progress
