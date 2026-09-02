@@ -1,7 +1,6 @@
 ## اجرای کامل محلی
 
-این نسخه از Broker خارجی استفاده نمی‌کند. Mosquitto 2 داخل Docker با TCP روی پورت 1883 اجرا می‌شود و username/password تسک را نگه می‌دارد. Publisher و Subscriber به hostname سرویس `mqtt` وصل می‌شوند.
-
+این نسخه از Broker خارجی استفاده نمی‌کند. Mosquitto 2 داخل Docker با TCP روی پورت 1883 اجرا می‌شود و username/password  را نگه می‌دارد. Publisher و Subscriber به hostname سرویس `mqtt` وصل می‌شوند.
 ### راه‌اندازی
 
 ```bash
