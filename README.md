@@ -1,72 +1,65 @@
-## اجرای کامل محلی
+Full Local Setup
 
-این نسخه از Broker خارجی استفاده نمی‌کند. Mosquitto 2 داخل Docker با TCP روی پورت 1883 اجرا می‌شود و username/password  را نگه می‌دارد. Publisher و Subscriber به hostname سرویس `mqtt` وصل می‌شوند.
-### راه‌اندازی
+This version does not use an external broker. Mosquitto 2 runs inside Docker with TCP on port 1883 and keeps the username/password configuration. The Publisher and Subscriber connect to the mqtt service hostname.
 
-```bash
+Setup
+
 cp .env.example .env
 make clean
 make dev
 make install
 make quality
-```
 
-### تست Integration واقعی MQTT
+Real MQTT Integration Test
 
-```bash
 make integration-test
-```
 
-این تست واقعاً به Mosquitto داخل Docker وصل می‌شود، یک subscriber و publisher می‌سازد و یک پیام را end-to-end عبور می‌دهد.
+This test actually connects to Mosquitto running inside Docker, creates a subscriber and publisher, and sends a message end-to-end.
 
-### اجرای Publisher و Subscriber
+Running the Publisher and Subscriber
 
-در دو ترمینال جدا:
+In two separate terminals:
 
-```bash
 make subscriber
-```
-
-```bash
 make publisher
-```
 
-Publisher هر ثانیه timestamp و یک مقدار تصادفی بین 20 و 30 را روی `test/your_name` منتشر می‌کند. Subscriber پیام را دریافت کرده و از طریق Soketi روی channel `mqtt.telemetry` و event `telemetry.updated` برای React منتشر می‌کند.
+The Publisher sends a timestamp and a random value between 20 and 30 every second to the test/your_name topic.
 
-### اجرای Frontend
+The Subscriber receives the message and publishes it to React through Soketi using the mqtt.telemetry channel and the telemetry.updated event.
 
-```bash
+Running the Frontend
+
 make frontend
-```
 
-سپس `http://localhost:5173` را باز کنید. Frontend از WebSocket روی `localhost:6001` به Soketi وصل می‌شود و Gauge را به صورت realtime تغییر می‌دهد.
+Then open http://localhost:5173.
 
-برای build فرانت:
+The frontend connects to Soketi via WebSocket on localhost:6001 and updates the Gauge in realtime.
 
-```bash
+To build the frontend:
+
 make frontend-build
-```
 
-## تست‌ها
+Tests
 
-`make quality` شامل PHP-CS-Fixer، PHPStan و تست‌های unit/feature است. `make integration-test` تست واقعی Broker داخلی را اجرا می‌کند.
+make quality includes PHP-CS-Fixer, PHPStan, and unit/feature tests.
 
+make integration-test runs a real integration test against the internal MQTT broker.
 
-### First startup
+First Startup
 
 Run:
 
-```bash
 docker compose up -d --build
-```
 
-اولین راه‌اندازی، فایل رمز عبور محلی Mosquitto را ایجاد می‌کند. راه‌اندازی‌های بعدی، به جای تلاش برای ایجاد مجدد فایل موجود، آن را مجدداً استفاده و به‌روزرسانی می‌کنند.
+On the first startup, the local Mosquitto password file is created.
 
-React gauge را در آدرس `http://localhost:5173` باز کنید.
+On subsequent startups, the existing password file is reused and updated instead of attempting to recreate it.
 
-برای تنظیم مجدد تمام volume های محلی و ایجاد مجدد broker از ابتدا:
+Open the React Gauge at:
 
-```bash
+http://localhost:5173
+
+To reset all local volumes and recreate the broker from scratch:
+
 docker compose down -v --remove-orphans
 docker compose up -d --build
-```
